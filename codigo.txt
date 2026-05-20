@@ -1,0 +1,9 @@
+def calcular(x, y):
+
+    resultado = x + y 
+
+    while resultado > 0: 
+
+        resultado = resultado - 1 
+        
+    return resultado
