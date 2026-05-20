@@ -14,6 +14,17 @@ def analisador_semantico(tokens):
 
                 tabela_simbolos[valor] = True
 
+                if valor in tabela_simbolos:
+
+                    print(
+                        f'Erro Semântico: '
+                        f'variável "{valor}" redeclarada'
+                    )
+                
+                else:
+
+                    tabela_simbolos[valor] = True
+
             else:
 
                 if ( i + 1 < len(tokens) and tokens[i + 1][0] == 'ABRE_PAR' ):
