@@ -14,9 +14,9 @@ TOKENS = [
     ('SOMA', r'\+'),
     ('SUBTRACAO', r'-'),
     ('MULTIPLICACAO', r'\*'),
+    ('COMENTARIO', r'\#.*'),
     ('DIVISAO', r'/'),
     ('ATRIBUICAO', r'='),
-    ('DELIMITADOR', r'\n'),
     ('DOIS_PONTOS', r':'),
     ('VIRGULA', r','),
     ('ABRE_PAR', r'\('),
@@ -30,44 +30,77 @@ TOKENS = [
     ('OR', r'\bor\b'),
     ('NOT', r'\bnot\b'),
     ('ID', r'[a-zA-Z_][a-zA-Z0-9_]*'),
-    ('ESPACO', r'[ \t\r]+'),
+    ('ESPACO', r'[ \t]+'),
     ('ERRO', r'.'),
-    
 ]
 
 # junta tudo
-
 
 regex = '|'.join(
     f'(?P<{nome}>{padrao})'
     for nome, padrao in TOKENS
 )
 
-
 # analisa 
-
 
 def analisador_lexico(codigo):
 
-    tokens_encontrados = []
+    tokens = []
 
-    for match in re.finditer(regex, codigo):
+    linhas = codigo.splitlines()
 
-        tipo = match.lastgroup
-        valor = match.group()
+    pilha_indentacao = [0]
 
-        # ignora
-        if tipo == 'ESPACO':
+    for linha in linhas:
+
+        # ignora linhas vazias
+        if linha.strip() == '':
 
             continue
 
-        # olha o erro 
-        elif tipo == 'ERRO':
+        indentacao = len(linha) - len(linha.lstrip(' '))
 
-            print(f'Erro léxico: símbolo inválido "{valor}"')
+        # INDENT
+        if indentacao > pilha_indentacao[-1]:
 
-        else:
+            pilha_indentacao.append(indentacao)
+            tokens.append(('INDENT', indentacao))
 
-            tokens_encontrados.append((tipo, valor))
+        # DEDENT
+        while indentacao < pilha_indentacao[-1]:
 
-    return tokens_encontrados
+            pilha_indentacao.pop()
+            tokens.append(('DEDENT', indentacao))
+
+        # remove espaços iniciais
+        linha_sem_indent = linha.lstrip()
+
+        for match in re.finditer(regex, linha_sem_indent):
+
+            tipo = match.lastgroup
+            valor = match.group()
+
+            if tipo == 'ESPACO':
+
+                continue
+
+            # gera erro
+
+            elif tipo == 'ERRO':
+
+                print(f'Erro léxico: símbolo inválido "{valor}"')
+
+            else:
+
+                tokens.append((tipo, valor))
+
+        # fim da linha
+        tokens.append(('NOVA_LINHA', '\\n'))
+
+
+    while len(pilha_indentacao) > 1:
+        
+        pilha_indentacao.pop()
+        tokens.append(('DEDENT', 0))
+
+    return tokens
