@@ -1,7 +1,5 @@
 from graphviz import Digraph
 
-
-
 class Programa:
 
     def __init__(self, statements):
@@ -61,9 +59,6 @@ class While:
     def __init__(self, condicao, corpo):
         self.condicao = condicao
         self.corpo = corpo
-
-
-
 
 class Parser:
 
