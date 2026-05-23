@@ -32,6 +32,7 @@ TOKENS = [
     ('ID', r'[a-zA-Z_][a-zA-Z0-9_]*'),
     ('ESPACO', r'[ \t]+'),
     ('ERRO', r'.'),
+   
 ]
 
 # junta tudo
@@ -51,7 +52,7 @@ def analisador_lexico(codigo):
 
     pilha_indentacao = [0]
 
-    for linha in linhas:
+    for numero_linha, linha in enumerate(linhas, start=1):
 
         # ignora linhas vazias
         if linha.strip() == '':
@@ -59,28 +60,30 @@ def analisador_lexico(codigo):
             continue
 
         indentacao = len(linha) - len(linha.lstrip(' '))
-
+        
         # INDENT
         if indentacao > pilha_indentacao[-1]:
 
             pilha_indentacao.append(indentacao)
-            tokens.append(('INDENT', indentacao))
+            tokens.append(('INDENT', indentacao, numero_linha))
 
         # DEDENT
         while indentacao < pilha_indentacao[-1]:
 
             pilha_indentacao.pop()
-            tokens.append(('DEDENT', indentacao))
+            tokens.append(('DEDENT', indentacao, numero_linha))
 
         # remove espaços iniciais
         linha_sem_indent = linha.lstrip()
+
 
         for match in re.finditer(regex, linha_sem_indent):
 
             tipo = match.lastgroup
             valor = match.group()
 
-            if tipo == 'ESPACO':
+
+            if tipo in ('ESPACO', 'COMENTARIO'):
 
                 continue
 
@@ -88,14 +91,14 @@ def analisador_lexico(codigo):
 
             elif tipo == 'ERRO':
 
-                print(f'Erro léxico: símbolo inválido "{valor}"')
+                print(f'Erro léxico ( Linha {numero_linha} ): símbolo inválido "{valor}"')
 
             else:
 
-                tokens.append((tipo, valor))
+                tokens.append((tipo, valor, numero_linha))
 
         # fim da linha
-        tokens.append(('NOVA_LINHA', '\\n'))
+        tokens.append(('NOVA_LINHA', '\\n', numero_linha))
 
 
     while len(pilha_indentacao) > 1:

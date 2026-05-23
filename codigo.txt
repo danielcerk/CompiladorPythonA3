@@ -1,11 +1,11 @@
 # Teste codigo
 
-def calcular(x, y):
+def calcular(x, y)
 
-    resultado = x + y 
+ resultado = ( x + y ) / x
 
-    while resultado > 0: 
+ while resultado > 0: 
 
-        resultado = resultado - 1 
+  resultado = resultado - 1 
         
-    return resultado
+ return resultado

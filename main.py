@@ -31,7 +31,7 @@ def main():
 
     except Exception as erro:
 
-        print(f'Erro sintático: {erro}')
+        print(f'{erro}')
         return
 
     print('Geração de AST')
@@ -52,7 +52,7 @@ def main():
 
     except Exception as erro:
 
-        print(f'Erro semântico: {erro}')
+        print(f'{erro}')
 
 
 if __name__ == '__main__':

@@ -1,15 +1,16 @@
 from graphviz import Digraph
 
+
+
 class Programa:
 
     def __init__(self, statements):
-
         self.statements = statements
+
 
 class Funcao:
 
     def __init__(self, nome, parametros, corpo):
-
         self.nome = nome
         self.parametros = parametros
         self.corpo = corpo
@@ -18,14 +19,12 @@ class Funcao:
 class Retorno:
 
     def __init__(self, valor):
-
         self.valor = valor
 
 
 class Atribuicao:
 
     def __init__(self, nome, valor):
-
         self.nome = nome
         self.valor = valor
 
@@ -33,7 +32,6 @@ class Atribuicao:
 class BinOp:
 
     def __init__(self, esquerda, operador, direita):
-
         self.esquerda = esquerda
         self.operador = operador
         self.direita = direita
@@ -42,69 +40,305 @@ class BinOp:
 class Numero:
 
     def __init__(self, valor):
-
         self.valor = valor
 
 
 class Variavel:
 
     def __init__(self, nome):
-
         self.nome = nome
 
 
 class ChamadaFuncao:
 
     def __init__(self, nome, argumentos):
-
         self.nome = nome
         self.argumentos = argumentos
 
-ast_programa = Programa([
 
-    Funcao(
-        nome='soma',
+class While:
 
-        parametros=[
-            Variavel('a'),
-            Variavel('b')
-        ],
+    def __init__(self, condicao, corpo):
+        self.condicao = condicao
+        self.corpo = corpo
 
-        corpo=[
 
-            Retorno(
 
-                BinOp(
-                    esquerda=Variavel('a'),
-                    operador='+',
-                    direita=Variavel('b')
-                )
 
+class Parser:
+
+    def __init__(self, tokens):
+
+        self.tokens = tokens
+        self.pos = 0
+        self.linha = 1
+
+    # token atual
+    def atual(self):
+
+        if self.pos < len(self.tokens):
+            return self.tokens[self.pos]
+
+        return ('EOF', '', -1)
+
+    # consumir token
+    def consumir(self, tipo_esperado):
+
+        tipo, valor, linha = self.atual()
+
+        if tipo == tipo_esperado:
+
+            self.pos += 1
+            return valor
+
+        raise Exception(
+            f'Erro sintático ( Linha {linha} ): Esperado {tipo_esperado}'
+        )
+
+    
+
+    def parse(self):
+
+        statements = []
+
+        while self.atual()[0] != 'EOF':
+
+            if self.atual()[0] == 'NOVA_LINHA':
+
+                self.consumir('NOVA_LINHA')
+                continue
+
+            statements.append(
+                self.statement()
             )
 
+        return Programa(statements)
+
+    
+
+    def statement(self):
+
+        tipo, _, linha = self.atual()
+
+        if tipo == 'DEF':
+            return self.funcao()
+
+        elif tipo == 'RETURN':
+            return self.retorno()
+
+        elif tipo == 'WHILE':
+            return self.while_stmt()
+
+        elif tipo == 'ID':
+            return self.atribuicao()
+
+        raise Exception(f'Comando inválido: {tipo}')
+
+   
+
+    def funcao(self):
+
+        self.consumir('DEF')
+
+        nome = self.consumir('ID')
+
+        self.consumir('ABRE_PAR')
+
+        parametros = []
+
+        if self.atual()[0] != 'FECHA_PAR':
+
+            parametros.append(
+                Variavel(self.consumir('ID'))
+            )
+
+            while self.atual()[0] == 'VIRGULA':
+
+                self.consumir('VIRGULA')
+
+                parametros.append(
+                    Variavel(self.consumir('ID'))
+                )
+
+        self.consumir('FECHA_PAR')
+
+        self.consumir('DOIS_PONTOS')
+
+        self.consumir('NOVA_LINHA')
+
+        self.consumir('INDENT')
+
+        corpo = []
+
+        while self.atual()[0] != 'DEDENT':
+
+            corpo.append(
+                self.statement()
+            )
+
+            if self.atual()[0] == 'NOVA_LINHA':
+
+                self.consumir('NOVA_LINHA')
+
+        self.consumir('DEDENT')
+
+        return Funcao(nome, parametros, corpo)
+
+    
+
+    def retorno(self):
+
+        self.consumir('RETURN')
+
+        valor = self.expressao()
+
+        return Retorno(valor)
+
+  
+
+    def while_stmt(self):
+
+        self.consumir('WHILE')
+
+        condicao = self.expressao()
+
+        self.consumir('DOIS_PONTOS')
+
+        self.consumir('NOVA_LINHA')
+
+        self.consumir('INDENT')
+
+        corpo = []
+
+        while self.atual()[0] != 'DEDENT':
+
+            corpo.append(
+                self.statement()
+            )
+
+            if self.atual()[0] == 'NOVA_LINHA':
+
+                self.consumir('NOVA_LINHA')
+
+        self.consumir('DEDENT')
+
+        return While(condicao, corpo)
+
+   
+
+    def atribuicao(self):
+
+        nome = self.consumir('ID')
+
+        self.consumir('ATRIBUICAO')
+
+        valor = self.expressao()
+
+        return Atribuicao(nome, valor)
+
+    
+
+    def expressao(self):
+
+        esquerda = self.termo()
+
+        operadores = [
+
+            'SOMA',
+            'SUBTRACAO',
+            'MULTIPLICACAO',
+            'DIVISAO',
+            'MENOR',
+            'MAIOR',
+            'IGUAL_IGUAL',
+            'DIFERENTE',
+            'MENOR_IGUAL',
+            'MAIOR_IGUAL'
         ]
-    ),
 
-    Atribuicao(
+        while self.atual()[0] in operadores:
 
-        nome='x',
+            operador = self.atual()[1]
 
-        valor=ChamadaFuncao(
-            nome='soma',
+            self.pos += 1
 
-            argumentos=[
-                Numero(2),
-                Numero(3)
-            ]
-        )
-    )
-])
+            direita = self.termo()
 
-dot = Digraph(comment="AST Mini Python")
-dot.attr("node", shape="box", style="rounded")
+            esquerda = BinOp(
+                esquerda,
+                operador,
+                direita
+            )
+
+        return esquerda
+
+    
+
+    def termo(self):
+
+        tipo, valor, linha = self.atual()
+
+        # número
+        if tipo == 'NUMERO':
+
+            self.consumir('NUMERO')
+
+            return Numero(valor)
+
+        # variável ou função
+        elif tipo == 'ID':
+
+            nome = self.consumir('ID')
+
+            # chamada de função
+            if self.atual()[0] == 'ABRE_PAR':
+
+                self.consumir('ABRE_PAR')
+
+                argumentos = []
+
+                if self.atual()[0] != 'FECHA_PAR':
+
+                    argumentos.append(
+                        self.expressao()
+                    )
+
+                    while self.atual()[0] == 'VIRGULA':
+
+                        self.consumir('VIRGULA')
+
+                        argumentos.append(
+                            self.expressao()
+                        )
+
+                self.consumir('FECHA_PAR')
+
+                return ChamadaFuncao(nome, argumentos)
+
+            return Variavel(nome)
+
+        # expressão entre parênteses
+        elif tipo == 'ABRE_PAR':
+
+            self.consumir('ABRE_PAR')
+
+            expr = self.expressao()
+
+            self.consumir('FECHA_PAR')
+
+            return expr
+
+        raise Exception(f'Expressão inválida: {tipo}')
+
+
+def parser(tokens):
+
+    p = Parser(tokens)
+
+    return p.parse()
+
 
 contador = 0
-
 
 def novo_id():
 
@@ -112,90 +346,99 @@ def novo_id():
 
     contador += 1
 
-    return f"n{contador}"
+    return f'n{contador}'
 
 
-def adicionar_nos(node, parent_id=None):
+def gerar_ast(ast_programa):
 
-    node_id = novo_id()
+    dot = Digraph(comment="AST Mini Python")
 
-    if isinstance(node, Programa):
+    dot.attr("node", shape="box", style="rounded")
 
-        label = "Programa"
+    def adicionar_nos(node, parent_id=None):
 
-    elif isinstance(node, Funcao):
+        node_id = novo_id()
 
-        label = f"Funcao\\n{node.nome}"
+        if isinstance(node, Programa):
+            label = "Programa"
 
-    elif isinstance(node, Retorno):
+        elif isinstance(node, Funcao):
+            label = f"Funcao\\n{node.nome}"
 
-        label = "retorna"
+        elif isinstance(node, Retorno):
+            label = "Return"
 
-    elif isinstance(node, Atribuicao):
+        elif isinstance(node, Atribuicao):
+            label = f"Atribuicao\\n{node.nome}"
 
-        label = f"Atribuicao\\n{node.nome}"
+        elif isinstance(node, BinOp):
+            label = f"Operador\\n{node.operador}"
 
-    elif isinstance(node, BinOp):
+        elif isinstance(node, Numero):
+            label = f"Numero\\n{node.valor}"
 
-        label = f"operador\\n{node.operador}"
+        elif isinstance(node, Variavel):
+            label = f"Variavel\\n{node.nome}"
 
-    elif isinstance(node, Numero):
+        elif isinstance(node, ChamadaFuncao):
+            label = f"Chamada\\n{node.nome}"
 
-        label = f"Numero\\n{node.valor}"
+        elif isinstance(node, While):
+            label = "While"
 
-    elif isinstance(node, Variavel):
+        else:
+            label = type(node).__name__
 
-        label = f"Variavel\\n{node.nome}"
+        dot.node(node_id, label)
 
-    elif isinstance(node, ChamadaFuncao):
+        if parent_id:
 
-        label = f"Chama\\n{node.nome}"
+            dot.edge(parent_id, node_id)
 
-    else:
+        if isinstance(node, Programa):
 
-        label = type(node).__name__
+            for stmt in node.statements:
+                adicionar_nos(stmt, node_id)
 
-    dot.node(node_id, label)
+        elif isinstance(node, Funcao):
 
-    if parent_id:
+            for param in node.parametros:
+                adicionar_nos(param, node_id)
 
-        dot.edge(parent_id, node_id)
+            for stmt in node.corpo:
+                adicionar_nos(stmt, node_id)
 
-    if isinstance(node, Programa):
+        elif isinstance(node, Retorno):
 
-        for stmt in node.statements:
+            adicionar_nos(node.valor, node_id)
 
-            adicionar_nos(stmt, node_id)
+        elif isinstance(node, Atribuicao):
 
-    elif isinstance(node, Funcao):
+            adicionar_nos(node.valor, node_id)
 
-        for param in node.parametros:
+        elif isinstance(node, BinOp):
 
-            adicionar_nos(param, node_id)
+            adicionar_nos(node.esquerda, node_id)
+            adicionar_nos(node.direita, node_id)
 
-        for stmt in node.corpo:
+        elif isinstance(node, ChamadaFuncao):
 
-            adicionar_nos(stmt, node_id)
+            for arg in node.argumentos:
+                adicionar_nos(arg, node_id)
 
-    elif isinstance(node, Retorno):
+        elif isinstance(node, While):
 
-        adicionar_nos(node.valor, node_id)
+            adicionar_nos(node.condicao, node_id)
 
-    elif isinstance(node, Atribuicao):
+            for stmt in node.corpo:
+                adicionar_nos(stmt, node_id)
 
-        adicionar_nos(node.valor, node_id)
+    adicionar_nos(ast_programa)
 
-    elif isinstance(node, BinOp):
+    dot.render(
+        "ast_mini_python",
+        format="png",
+        cleanup=True
+    )
 
-        adicionar_nos(node.esquerda, node_id)
-        adicionar_nos(node.direita, node_id)
-
-    elif isinstance(node, ChamadaFuncao):
-
-        for arg in node.argumentos:
-
-            adicionar_nos(arg, node_id)
-
-adicionar_nos(ast_programa)
-
-dot.render("ast_mini_python", format="png", cleanup=True)
+    print("AST gerada: ast_mini_python.png")
