@@ -1,7 +1,7 @@
-i = 0
+def teste(x, y):
 
-for i in range(5):
+    soma = x + y
 
-    i += 1
+    return soma
 
-    print(i)
+teste(10, 15)
