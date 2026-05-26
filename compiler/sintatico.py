@@ -186,24 +186,7 @@ class Parser:
             f'Comando inválido: {tipo}'
         )
 
-    def bloco(self):
-
-        self.consumir('INDENT')
-
-        corpo = []
-
-        while self.atual()[0] != 'DEDENT':
-
-            corpo.append(
-                self.statement()
-            )
-
-            if self.atual()[0] == 'NOVA_LINHA':
-                self.consumir('NOVA_LINHA')
-
-        self.consumir('DEDENT')
-
-        return corpo
+   
 
     def funcao(self):
 
@@ -239,9 +222,25 @@ class Parser:
 
         self.consumir('NOVA_LINHA')
 
+        self.consumir('INDENT')
+
         self.dentro_funcao = True
 
-        corpo = self.bloco()
+        corpo = []
+
+        while self.atual()[0] != 'DEDENT':
+
+            corpo.append(
+                self.statement()
+            )
+
+            if self.atual()[0] == 'NOVA_LINHA':
+
+                self.consumir(
+                    'NOVA_LINHA'
+                )
+
+        self.consumir('DEDENT')
 
         self.dentro_funcao = False
 
@@ -258,6 +257,25 @@ class Parser:
         valor = self.expressao()
 
         return Retorno(valor)
+    
+    def bloco(self):
+
+        self.consumir('INDENT')
+
+        corpo = []
+
+        while self.atual()[0] != 'DEDENT':
+
+            corpo.append(
+                self.statement()
+            )
+
+            if self.atual()[0] == 'NOVA_LINHA':
+                self.consumir('NOVA_LINHA')
+
+        self.consumir('DEDENT')
+
+        return corpo
 
     def if_stmt(self):
 

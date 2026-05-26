@@ -1,6 +1,8 @@
 def teste(x, y):
 
-    soma = x + y
+    while x < 5:
+
+        soma = x + y
 
     return soma
 
