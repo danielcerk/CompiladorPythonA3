@@ -3,12 +3,13 @@ import re
 # definição de tokens
 
 TOKENS = [
-
     ('NUMERO', r'\d+(\.\d+)?'),
     ('IGUAL_IGUAL', r'=='),
     ('DIFERENTE', r'!='),
     ('MAIOR_IGUAL', r'>='),
     ('MENOR_IGUAL', r'<='),
+    ('INCREMENTA_ATRIBUICAO', r'\+='),
+    ('DECREMENTA_ATRIBUICAO', r'\-='),
     ('MAIOR', r'>'),
     ('MENOR', r'<'),
     ('SOMA', r'\+'),
@@ -31,6 +32,10 @@ TOKENS = [
     ('AND', r'\band\b'),
     ('OR', r'\bor\b'),
     ('NOT', r'\bnot\b'),
+    ('IN', r'\bin\b'),
+    ('TRUE', r'\bTrue\b'),
+    ('FALSE', r'\bFalse\b'),
+    ('NONE', r'\bNone\b'),
     (
         'STRING',
         r"'''[\s\S]*?'''|\"\"\"[\s\S]*?\"\"\"|'[^'\n]*'|\"[^\"\n]*\""
@@ -95,7 +100,7 @@ def analisador_lexico(codigo):
 
             elif tipo == 'ERRO':
 
-                raise Exception(
+                print(
                     f'Erro léxico '
                     f'( Linha {numero_linha} ): '
                     f'símbolo inválido "{valor}"'

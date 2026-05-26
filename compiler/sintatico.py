@@ -13,6 +13,12 @@ class Funcao:
         self.parametros = parametros
         self.corpo = corpo
 
+class Retorno:
+
+    def __init__(self, valor):
+        self.valor = valor
+
+
 class If:
 
     def __init__(self, condicao, corpo, elifs=None, else_corpo=None):
@@ -28,12 +34,6 @@ class Elif:
 
         self.condicao = condicao
         self.corpo = corpo
-
-class Retorno:
-
-    def __init__(self, valor):
-        self.valor = valor
-
 
 class Atribuicao:
 
@@ -61,6 +61,11 @@ class Numero:
 
         self.valor = valor
 
+class Booleano:
+
+    def __init__(self, valor):
+
+        self.valor = valor
 
 class Variavel:
 
@@ -81,6 +86,14 @@ class While:
         self.condicao = condicao
         self.corpo = corpo
 
+class For:
+
+    def __init__(self, variavel, iteravel, corpo):
+
+        self.variavel = variavel
+        self.iteravel = iteravel
+        self.corpo = corpo
+
 class Parser:
 
     def __init__(self, tokens):
@@ -88,6 +101,8 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.linha = 1
+
+        self.dentro_funcao = False
 
     # token atual
     def atual(self):
@@ -110,8 +125,6 @@ class Parser:
         raise Exception(
             f'Erro sintático ( Linha {linha} ): Esperado {tipo_esperado}'
         )
-
-    
 
     def parse(self):
 
@@ -139,11 +152,22 @@ class Parser:
         if tipo == 'DEF':
             return self.funcao()
 
-        elif tipo == 'RETURN':
-            return self.retorno()
-
         elif tipo == 'WHILE':
             return self.while_stmt()
+        
+        elif tipo == 'FOR':
+
+            return self.for_stmt()
+        
+        elif tipo == 'RETURN':
+
+            if not self.dentro_funcao:
+
+                raise Exception(
+                    'Return fora de função'
+                )
+
+            return self.retorno()
 
         elif tipo == 'IF':
             return self.if_stmt()
@@ -177,7 +201,9 @@ class Parser:
         if self.atual()[0] != 'FECHA_PAR':
 
             parametros.append(
-                Variavel(self.consumir('ID'))
+                Variavel(
+                    self.consumir('ID')
+                )
             )
 
             while self.atual()[0] == 'VIRGULA':
@@ -185,7 +211,9 @@ class Parser:
                 self.consumir('VIRGULA')
 
                 parametros.append(
-                    Variavel(self.consumir('ID'))
+                    Variavel(
+                        self.consumir('ID')
+                    )
                 )
 
         self.consumir('FECHA_PAR')
@@ -195,6 +223,8 @@ class Parser:
         self.consumir('NOVA_LINHA')
 
         self.consumir('INDENT')
+
+        self.dentro_funcao = True
 
         corpo = []
 
@@ -206,13 +236,19 @@ class Parser:
 
             if self.atual()[0] == 'NOVA_LINHA':
 
-                self.consumir('NOVA_LINHA')
+                self.consumir(
+                    'NOVA_LINHA'
+                )
 
         self.consumir('DEDENT')
 
-        return Funcao(nome, parametros, corpo)
+        self.dentro_funcao = False
 
-    
+        return Funcao(
+            nome,
+            parametros,
+            corpo
+        )
 
     def retorno(self):
 
@@ -302,35 +338,76 @@ class Parser:
 
         self.consumir('INDENT')
 
-        corpo = []
-
-        while self.atual()[0] != 'DEDENT':
-
-            corpo.append(
-                self.statement()
-            )
-
-            if self.atual()[0] == 'NOVA_LINHA':
-
-                self.consumir('NOVA_LINHA')
+        corpo = self.bloco()
 
         self.consumir('DEDENT')
 
         return While(condicao, corpo)
+    
+    def for_stmt(self):
 
-   
+        self.consumir('FOR')
+
+        variavel = Variavel(
+            self.consumir('ID')
+        )
+
+        self.consumir('IN')
+
+        iteravel = self.expressao()
+
+        self.consumir('DOIS_PONTOS')
+
+        self.consumir('NOVA_LINHA')
+
+        corpo = self.bloco()
+
+        return For(
+            variavel,
+            iteravel,
+            corpo
+        )
 
     def atribuicao(self):
 
         nome = self.consumir('ID')
 
-        self.consumir('ATRIBUICAO')
+        tipo = self.atual()[0]
 
-        valor = self.expressao()
+        if tipo == 'ATRIBUICAO':
+
+            self.consumir('ATRIBUICAO')
+            valor = self.expressao()
+
+        elif tipo == 'INCREMENTA_ATRIBUICAO':
+
+            self.consumir('INCREMENTA_ATRIBUICAO')
+
+            valor = BinOp(
+                Variavel(nome),
+                '+',
+                self.expressao()
+            )
+
+        elif tipo == 'DECREMENTA_ATRIBUICAO':
+
+            self.consumir('DECREMENTA_ATRIBUICAO')
+
+            valor = BinOp(
+                Variavel(nome),
+                '-',
+                self.expressao()
+            )
+
+        else:
+
+            linha = self.atual()[2]
+
+            raise Exception(
+                f'Erro sintático ( Linha {linha} ): Esperado atribuição'
+            )
 
         return Atribuicao(nome, valor)
-
-    
 
     def expressao(self):
 
@@ -347,7 +424,8 @@ class Parser:
             'IGUAL_IGUAL',
             'DIFERENTE',
             'MENOR_IGUAL',
-            'MAIOR_IGUAL'
+            'MAIOR_IGUAL',
+            'IN'
         ]
 
         while self.atual()[0] in operadores:
@@ -366,7 +444,6 @@ class Parser:
 
         return esquerda
 
-    
 
     def termo(self):
 
@@ -377,12 +454,24 @@ class Parser:
             self.consumir('NUMERO')
 
             return Numero(valor)
-        
+
         elif tipo == 'STRING':
 
             self.consumir('STRING')
 
             return String(valor)
+
+        elif tipo == 'TRUE':
+
+            self.consumir('TRUE')
+
+            return Booleano(True)
+
+        elif tipo == 'FALSE':
+
+            self.consumir('FALSE')
+
+            return Booleano(False)
 
         elif tipo == 'ID':
 
@@ -430,7 +519,6 @@ class Parser:
         raise Exception(
             f'Expressão inválida ( Linha {linha} ): {valor}'
         )
-
 
 def parser(tokens):
 
@@ -484,6 +572,10 @@ def gerar_ast(ast_programa):
 
             label = f"Numero\\n{node.valor}"
 
+        elif isinstance(node, Booleano):
+
+            label = f'Booleano ({node.valor})'
+
         elif isinstance(node, Variavel):
 
             label = f"Variavel\\n{node.nome}"
@@ -491,10 +583,6 @@ def gerar_ast(ast_programa):
         elif isinstance(node, ChamadaFuncao):
 
             label = f"Chamada\\n{node.nome}"
-
-        elif isinstance(node, While):
-
-            label = "Loop While"
 
         elif isinstance(node, If):
 
@@ -517,6 +605,7 @@ def gerar_ast(ast_programa):
                 adicionar_nos(stmt, node_id)
 
         else:
+
             label = type(node).__name__
 
         dot.node(node_id, label)
@@ -561,6 +650,15 @@ def gerar_ast(ast_programa):
             adicionar_nos(node.condicao, node_id)
 
             for stmt in node.corpo:
+                adicionar_nos(stmt, node_id)
+
+        elif isinstance(node, For):
+
+            adicionar_nos(node.variavel, node_id)
+            adicionar_nos(node.iteravel, node_id)
+
+            for stmt in node.corpo:
+                
                 adicionar_nos(stmt, node_id)
 
     adicionar_nos(ast_programa)
