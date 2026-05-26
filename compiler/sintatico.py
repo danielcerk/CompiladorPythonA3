@@ -13,6 +13,21 @@ class Funcao:
         self.parametros = parametros
         self.corpo = corpo
 
+class If:
+
+    def __init__(self, condicao, corpo, elifs=None, else_corpo=None):
+
+        self.condicao = condicao
+        self.corpo = corpo
+        self.elifs = elifs or []
+        self.else_corpo = else_corpo or []
+
+class Elif:
+
+    def __init__(self, condicao, corpo):
+
+        self.condicao = condicao
+        self.corpo = corpo
 
 class Retorno:
 
@@ -34,25 +49,31 @@ class BinOp:
         self.operador = operador
         self.direita = direita
 
+class String:
+
+    def __init__(self, valor):
+
+        self.valor = valor
 
 class Numero:
 
     def __init__(self, valor):
+
         self.valor = valor
 
 
 class Variavel:
 
     def __init__(self, nome):
-        self.nome = nome
 
+        self.nome = nome
 
 class ChamadaFuncao:
 
     def __init__(self, nome, argumentos):
+
         self.nome = nome
         self.argumentos = argumentos
-
 
 class While:
 
@@ -113,7 +134,7 @@ class Parser:
 
     def statement(self):
 
-        tipo, _, linha = self.atual()
+        tipo, valor, linha = self.atual()
 
         if tipo == 'DEF':
             return self.funcao()
@@ -124,10 +145,22 @@ class Parser:
         elif tipo == 'WHILE':
             return self.while_stmt()
 
+        elif tipo == 'IF':
+            return self.if_stmt()
+
         elif tipo == 'ID':
+
+            if (
+                self.pos + 1 < len(self.tokens)
+                and self.tokens[self.pos + 1][0] == 'ABRE_PAR'
+            ):
+                return self.expressao()
+
             return self.atribuicao()
 
-        raise Exception(f'Comando inválido: {tipo}')
+        raise Exception(
+            f'Comando inválido: {tipo}'
+        )
 
    
 
@@ -188,8 +221,74 @@ class Parser:
         valor = self.expressao()
 
         return Retorno(valor)
+    
+    def bloco(self):
 
-  
+        self.consumir('INDENT')
+
+        corpo = []
+
+        while self.atual()[0] != 'DEDENT':
+
+            corpo.append(
+                self.statement()
+            )
+
+            if self.atual()[0] == 'NOVA_LINHA':
+                self.consumir('NOVA_LINHA')
+
+        self.consumir('DEDENT')
+
+        return corpo
+
+    def if_stmt(self):
+
+        self.consumir('IF')
+
+        condicao = self.expressao()
+
+        self.consumir('DOIS_PONTOS')
+
+        self.consumir('NOVA_LINHA')
+
+        corpo = self.bloco()
+
+        elifs = []
+
+        while self.atual()[0] == 'ELIF':
+
+            self.consumir('ELIF')
+
+            cond_elif = self.expressao()
+
+            self.consumir('DOIS_PONTOS')
+
+            self.consumir('NOVA_LINHA')
+
+            corpo_elif = self.bloco()
+
+            elifs.append(
+                Elif(cond_elif, corpo_elif)
+            )
+
+        else_corpo = []
+
+        if self.atual()[0] == 'ELSE':
+
+            self.consumir('ELSE')
+
+            self.consumir('DOIS_PONTOS')
+
+            self.consumir('NOVA_LINHA')
+
+            else_corpo = self.bloco()
+
+        return If(
+            condicao,
+            corpo,
+            elifs,
+            else_corpo
+        )
 
     def while_stmt(self):
 
@@ -273,19 +372,22 @@ class Parser:
 
         tipo, valor, linha = self.atual()
 
-        # número
         if tipo == 'NUMERO':
 
             self.consumir('NUMERO')
 
             return Numero(valor)
+        
+        elif tipo == 'STRING':
 
-        # variável ou função
+            self.consumir('STRING')
+
+            return String(valor)
+
         elif tipo == 'ID':
 
             nome = self.consumir('ID')
 
-            # chamada de função
             if self.atual()[0] == 'ABRE_PAR':
 
                 self.consumir('ABRE_PAR')
@@ -308,11 +410,13 @@ class Parser:
 
                 self.consumir('FECHA_PAR')
 
-                return ChamadaFuncao(nome, argumentos)
+                return ChamadaFuncao(
+                    nome,
+                    argumentos
+                )
 
             return Variavel(nome)
 
-        # expressão entre parênteses
         elif tipo == 'ABRE_PAR':
 
             self.consumir('ABRE_PAR')
@@ -323,7 +427,9 @@ class Parser:
 
             return expr
 
-        raise Exception(f'Expressão inválida: {tipo}')
+        raise Exception(
+            f'Expressão inválida ( Linha {linha} ): {valor}'
+        )
 
 
 def parser(tokens):
@@ -355,31 +461,60 @@ def gerar_ast(ast_programa):
         node_id = novo_id()
 
         if isinstance(node, Programa):
+
             label = "Programa"
 
         elif isinstance(node, Funcao):
+
             label = f"Funcao\\n{node.nome}"
 
         elif isinstance(node, Retorno):
-            label = "Return"
+
+            label = "Retorno da função"
 
         elif isinstance(node, Atribuicao):
+
             label = f"Atribuicao\\n{node.nome}"
 
         elif isinstance(node, BinOp):
+
             label = f"Operador\\n{node.operador}"
 
         elif isinstance(node, Numero):
+
             label = f"Numero\\n{node.valor}"
 
         elif isinstance(node, Variavel):
+
             label = f"Variavel\\n{node.nome}"
 
         elif isinstance(node, ChamadaFuncao):
+
             label = f"Chamada\\n{node.nome}"
 
         elif isinstance(node, While):
-            label = "While"
+
+            label = "Loop While"
+
+        elif isinstance(node, If):
+
+            label = 'If ( Se )'
+
+            adicionar_nos(node.condicao, node_id)
+
+            for stmt in node.corpo:
+                
+                adicionar_nos(stmt, node_id)
+
+        elif isinstance(node, Elif):
+
+            label = "Se se não ( elif )"
+
+            adicionar_nos(node.condicao, node_id)
+
+            for stmt in node.corpo:
+                
+                adicionar_nos(stmt, node_id)
 
         else:
             label = type(node).__name__

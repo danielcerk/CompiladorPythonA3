@@ -1,7 +1,7 @@
-from compiler import ( 
-    
-    lexico, 
-    sintatico, 
+from compiler import (
+
+    lexico,
+    sintatico,
     semantico
 
 )
@@ -9,17 +9,30 @@ from compiler import (
 
 def main():
 
-    with open('codigo.txt', 'r', encoding='utf-8') as file:
+    with open(
+        'codigo.txt',
+        'r',
+        encoding='utf-8'
+    ) as file:
 
         codigo_fonte = file.read()
 
     print('análise léxica')
 
-    tokens = lexico.analisador_lexico(codigo_fonte)
+    try:
 
-    for token in tokens:
+        tokens = lexico.analisador_lexico(
+            codigo_fonte
+        )
 
-        print(token)
+        for token in tokens:
+
+            print(token)
+
+    except Exception as erro:
+
+        print(f'{erro}')
+        return
 
     print('análise sintática')
 
@@ -27,7 +40,9 @@ def main():
 
         ast = sintatico.parser(tokens)
 
-        print('AST gerada com sucesso.')
+        print(
+            'AST gerada com sucesso.'
+        )
 
     except Exception as erro:
 
@@ -42,17 +57,23 @@ def main():
 
     except Exception as erro:
 
-        print(f'Erro ao gerar AST: {erro}')
+        print(
+            f'Erro ao gerar AST: {erro}'
+        )
+        return
 
-    print('PArte análise semântica')
+    print('Parte análise semântica')
 
     try:
 
-        semantico.analisador_semantico(tokens)
+        semantico.analisador_semantico(
+            tokens
+        )
 
     except Exception as erro:
 
         print(f'{erro}')
+        return
 
 
 if __name__ == '__main__':

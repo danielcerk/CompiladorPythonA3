@@ -1,11 +1,3 @@
-# Teste codigo
+list = 10
 
-def calcular(x, y)
-
- resultado = ( x + y ) / x
-
- while resultado > 0: 
-
-  resultado = resultado - 1 
-        
- return resultado
+print(listpop())
