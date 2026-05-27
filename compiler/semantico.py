@@ -1,81 +1,135 @@
-def analisador_semantico(tokens):
+from compiler.sintatico import (
+    
+    Programa,
+    Funcao,
+    Atribuicao,
+    Variavel,
+    BinOp,
+    Numero,
+    Retorno,
+    If,
+    While,
+    For,
+    ChamadaFuncao
+
+)
+
+
+def analisador_semantico(ast):
 
     tabela_simbolos = {}
 
-    i = 0
-
-    while i < len(tokens):
-
-        tipo, valor, linha = tokens[i]
-
-        if tipo == 'DEF':
-
-            i += 1
-
-            # nome da função
-            if i < len(tokens) and tokens[i][0] == 'ID':
-
-                nome_funcao = tokens[i][1]
-                tabela_simbolos[nome_funcao] = 'funcao'
-
-            i += 1
-
-            # parâmetros
-            if i < len(tokens) and tokens[i][0] == 'ABRE_PAR':
-
-                i += 1
-
-                while (
-                    i < len(tokens)
-                    and tokens[i][0] != 'FECHA_PAR'
-                ):
-
-                    if tokens[i][0] == 'ID':
-
-                        parametro = tokens[i][1]
-                        tabela_simbolos[parametro] = 'parametro'
-
-                    i += 1
-
-        if tipo == 'ID':
-
-            if ( i + 1 < len(tokens) and tokens[i + 1][0] == 'ATRIBUICAO' ):
-                
-                if valor not in tabela_simbolos:
-
-                    tabela_simbolos[valor] = True
-                    i +=1
-                    continue
-
-            else:
-
-                if ( i + 1 < len(tokens) and tokens[i + 1][0] == 'ABRE_PAR' ):
-                    i += 1
-                    continue
-
-                if valor not in tabela_simbolos:
-
-                    print(
-                        f'Erro semântico (Linha {linha}): '
-                        f'variável "{valor}" não foi definida'
-                    )
-
-        elif tipo == 'DIVISAO':
-
-            if i + 1 < len(tokens):
-
-                prox_tipo, prox_valor = tokens[i + 1]
-
-                if (
-                    prox_tipo == 'NUMERO'
-                    and prox_valor in ('0', '0.0')
-                ):
-
-                    print(
-                        f'Erro semântico (Linha {linha}): divisão por zero'
-                    )
-
-        i += 1
+    visitar(ast, tabela_simbolos)
 
     print('\nTabela de símbolos:')
     print(tabela_simbolos)
+
+def visitar(node, tabela):
+
+    #se o nó é o programa inteiro
+    if isinstance(node, Programa):
+
+        for stmt in node.statements:
+
+            visitar(stmt, tabela)
+
+    #verifica se é função
+    elif isinstance(node, Funcao):
+
+        tabela[node.nome] = 'funcao'
+
+        for param in node.parametros:
+
+            tabela[param.nome] = 'parametro'
+
+        for stmt in node.corpo:
+
+            visitar(stmt, tabela)
+
+    #verifica atribuição
+    elif isinstance(node, Atribuicao):
+
+        tabela[node.nome] = 'variavel'
+
+        visitar(node.valor, tabela)
+
+    #variável
+    elif isinstance(node, Variavel):
+
+        if node.nome not in tabela:
+
+            print(
+                f'Erro semântico: '
+                f'variável "{node.nome}" não declarada'
+            )
+
+    #verifica operações
+    elif isinstance(node, BinOp):
+
+        #divisão por zero
+        if (
+            node.operador == '/'
+            and isinstance(node.direita, Numero)
+            and node.direita.valor in ('0', '0.0')
+        ):
+
+            print(
+                'Erro semântico: divisão por zero'
+            )
+
+        visitar(node.esquerda, tabela)
+        visitar(node.direita, tabela)
+
+    #retorno
+    elif isinstance(node, Retorno):
+
+        visitar(node.valor, tabela)
+
+    elif isinstance(node, If):
+
+        visitar(node.condicao, tabela)
+
+        for stmt in node.corpo:
+
+            visitar(stmt, tabela)
+
+        for elif_node in node.elifs:
+
+            visitar(elif_node, tabela)
+
+        for stmt in node.else_corpo:
+
+            visitar(stmt, tabela)
+
+    elif isinstance(node, While):
+
+        visitar(node.condicao, tabela)
+
+        for stmt in node.corpo:
+
+            visitar(stmt, tabela)
+
+    #for
+    elif isinstance(node, For):
+
+        tabela[node.variavel.nome] = 'variavel'
+
+        visitar(node.iteravel, tabela)
+
+        for stmt in node.corpo:
+
+            visitar(stmt, tabela)
+
+    #chamada de função
+    elif isinstance(node, ChamadaFuncao):
+
+        if node.nome not in tabela:
+
+            print(
+                f'Erro semântico: '
+                f'função "{node.nome}" não declarada'
+            )
+
+        for arg in node.argumentos:
+
+            visitar(arg, tabela)

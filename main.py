@@ -67,7 +67,7 @@ def main():
     try:
 
         semantico.analisador_semantico(
-            tokens
+            ast
         )
 
     except Exception as erro:
