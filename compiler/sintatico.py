@@ -108,6 +108,7 @@ class Parser:
     def atual(self):
 
         if self.pos < len(self.tokens):
+            
             return self.tokens[self.pos]
 
         return ('EOF', '', -1)

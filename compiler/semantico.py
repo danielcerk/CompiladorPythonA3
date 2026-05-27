@@ -57,7 +57,7 @@ def analisador_semantico(tokens):
 
                     print(
                         f'Erro semântico (Linha {linha}): '
-                        f'variável "{valor}" não declarada'
+                        f'variável "{valor}" não foi definida'
                     )
 
         elif tipo == 'DIVISAO':

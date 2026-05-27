@@ -2,6 +2,8 @@ import re
 
 # definição de tokens
 
+
+
 TOKENS = [
     ('NUMERO', r'\d+(\.\d+)?'),
     ('IGUAL_IGUAL', r'=='),
